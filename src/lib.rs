@@ -1,10 +1,8 @@
-use std::borrow::BorrowMut;
 use std::io::Cursor;
 use std::sync::{Arc, Mutex};
-use std::vec::Vec;
 
 use arc_swap::ArcSwap;
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use byteorder::{BigEndian, ReadBytesExt};
 use hex::encode;
 use nanorand::{Rng, WyRand};
 
@@ -26,8 +24,8 @@ pub fn set_seed_u64(seed: u64) {
 
 /// Generates 16-byte UUID as a String
 pub fn uuid16() -> String {
-    let bytes = RNG.with(|mut rng| {
-        let mut rng = rng.load();
+    let bytes = RNG.with(|rng| {
+        let rng = rng.load();
         let mut rng = rng.lock().unwrap();
         return (
             encode([
