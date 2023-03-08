@@ -1,114 +1,85 @@
+use std::borrow::BorrowMut;
+use std::io::Cursor;
+use std::sync::{Arc, Mutex};
+use std::vec::Vec;
+
+use arc_swap::ArcSwap;
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use hex::encode;
-use rand::Rng;
+use nanorand::{Rng, WyRand};
 
-pub mod iso {
-    //! ISO compatible UUID generators
-    use super::encode;
-    use super::Rng;
-
-    /// Generate UUID following ISO standards
-    pub fn uuid_v4() -> String {
-        let bytes = (
-            encode(rand::thread_rng().gen::<[u8; 4]>()),
-            encode(rand::thread_rng().gen::<[u8; 2]>()),
-            encode(rand::thread_rng().gen::<[u8; 2]>()),
-            encode(rand::thread_rng().gen::<[u8; 2]>()),
-            encode(rand::thread_rng().gen::<[u8; 6]>()),
-        );
-
-        format!(
-            "{}-{}-4{}-{}-{}",
-            bytes.0,
-            bytes.1,
-            &bytes.2[1..],
-            bytes.3,
-            bytes.4
-        )
-    }
+thread_local! {
+    static RNG : ArcSwap<Mutex<WyRand>> = ArcSwap::new(Arc::new(Mutex::new(WyRand::new_seed(11233429492))));
 }
 
-/// Null or Nil UUID special case
-pub const NULL_UUID: &str = "00000000-0000-0000-0000-000000000000";
+pub fn set_seed(seed: [u8; 32]) {
+    let mut seed = Cursor::new(seed.to_vec());
+    let seed = seed.read_u64::<BigEndian>().unwrap();
+    set_seed_u64(seed)
+}
 
-/// Generates 8-byte UUID as a String
-pub fn uuid8() -> String {
-    let bytes = (
-        encode(rand::thread_rng().gen::<[u8; 2]>()),
-        encode(rand::thread_rng().gen::<[u8; 1]>()),
-        encode(rand::thread_rng().gen::<[u8; 1]>()),
-        encode(rand::thread_rng().gen::<[u8; 1]>()),
-        encode(rand::thread_rng().gen::<[u8; 3]>()),
-    );
-
-    format!(
-        "{}-{}-{}-{}-{}",
-        bytes.0, bytes.1, bytes.2, bytes.3, bytes.4
-    )
+pub fn set_seed_u64(seed: u64) {
+    RNG.with(|v| {
+        v.swap(Arc::new(Mutex::new(WyRand::new_seed(seed))));
+    })
 }
 
 /// Generates 16-byte UUID as a String
 pub fn uuid16() -> String {
-    let bytes = (
-        encode(rand::thread_rng().gen::<[u8; 4]>()),
-        encode(rand::thread_rng().gen::<[u8; 2]>()),
-        encode(rand::thread_rng().gen::<[u8; 2]>()),
-        encode(rand::thread_rng().gen::<[u8; 2]>()),
-        encode(rand::thread_rng().gen::<[u8; 6]>()),
-    );
+    let bytes = RNG.with(|mut rng| {
+        let mut rng = rng.load();
+        let mut rng = rng.lock().unwrap();
+        return (
+            encode([
+                rng.generate::<u8>(),
+                rng.generate::<u8>(),
+                rng.generate::<u8>(),
+                rng.generate::<u8>(),
+            ]), //4
+            encode([rng.generate::<u8>(), rng.generate::<u8>()]), //2
+            encode([rng.generate::<u8>(), rng.generate::<u8>()]), //2
+            encode([rng.generate::<u8>(), rng.generate::<u8>()]), //2
+            encode([
+                rng.generate::<u8>(),
+                rng.generate::<u8>(),
+                rng.generate::<u8>(),
+                rng.generate::<u8>(),
+                rng.generate::<u8>(),
+                rng.generate::<u8>(),
+            ]), //6
+        );
+    });
 
     format!(
         "{}-{}-{}-{}-{}",
         bytes.0, bytes.1, bytes.2, bytes.3, bytes.4
     )
-}
-
-/// Generates 32-byte UUID as a String
-pub fn uuid32() -> String {
-    let bytes = (
-        encode(rand::thread_rng().gen::<[u8; 8]>()),
-        encode(rand::thread_rng().gen::<[u8; 4]>()),
-        encode(rand::thread_rng().gen::<[u8; 4]>()),
-        encode(rand::thread_rng().gen::<[u8; 4]>()),
-        encode(rand::thread_rng().gen::<[u8; 12]>()),
-    );
-
-    format!(
-        "{}-{}-{}-{}-{}",
-        bytes.0, bytes.1, bytes.2, bytes.3, bytes.4
-    )
-}
-
-#[cfg(test)]
-#[test]
-fn test_uuid8() {
-    let id: String = uuid8();
-
-    // 8 * 2 bytes + 4 dashes
-    assert_eq!(id.len(), 20);
 }
 
 #[test]
 fn test_uuid16() {
     let id: String = uuid16();
-
+    println!("{}", id);
     // 16 * 2 bytes + 4 dashes
     assert_eq!(id.len(), 36);
 }
 
+// Check against known value
 #[test]
-fn test_uuid32() {
-    let id: String = uuid32();
-
-    // 32 * 2 bytes + 4 dashes
-    assert_eq!(id.len(), 68);
+fn test_set_seed_u64() {
+    set_seed_u64(123);
+    let id: String = uuid16();
+    assert_eq!("1859d40f-2c26-22ce-da23-33be037553d0", id)
 }
 
+// Check against known value
 #[test]
-fn test_iso_uuid_v4() {
-    use self::iso::uuid_v4;
+fn test_set_seed_bytes() {
+    set_seed([
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0,
+    ]);
 
-    let iso_v4_uuid = uuid_v4();
-
-    assert_eq!(iso_v4_uuid.len(), 36);
-    assert_eq!(iso_v4_uuid.as_bytes()[14] as char, '4');
+    let id: String = uuid16();
+    assert_eq!("8e6da460-de1f-29a2-570a-7e8e3ac51a99", id)
 }

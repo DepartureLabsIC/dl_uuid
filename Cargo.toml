@@ -1,12 +1,12 @@
 [package]
-name = "rs-uuid"
+name = "dl_uuid"
 version = "0.4.0"
-authors = ["jhaboic <josiphaboic@gmail.com>"]
+authors = ["jhaboic <josiphaboic@gmail.com>", "suddenlyhazel <hazel@departure.dev>"]
 edition = "2021"
 description = "Universally unique identifier generator"
 license = "Apache-2.0"
-repository = "https://github.com/BitFields/rs-uuid"
-keywords = ["uuid", "generator", "uuid8", "uuid16", "uuid32"]
+repository = "https://github.com/DepartureLabsIC/dl_uuid"
+keywords = ["uuid", "dfinity", "internet_computer"]
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -14,3 +14,8 @@ readme = "README.md"
 [dependencies]
 rand = "0.8.4"
 hex = "0.4.0"
+const-random = "0.1.15"
+nanorand = "0.7.0"
+ic-cdk = "0.7.3"
+arc-swap = "0.4.8"
+byteorder = "1.4.3"
