@@ -4,8 +4,8 @@ use std::sync::{Arc, Mutex};
 use arc_swap::ArcSwap;
 use byteorder::{BigEndian, ReadBytesExt};
 use hex::encode;
-use rand_chacha::ChaCha20Rng;
 use rand_chacha::rand_core::{RngCore, SeedableRng};
+use rand_chacha::ChaCha20Rng;
 
 thread_local! {
     static RNG : ArcSwap<Mutex<ChaCha20Rng>> = ArcSwap::new(Arc::new(Mutex::new(ChaCha20Rng::seed_from_u64(11233429492))));
@@ -42,11 +42,11 @@ pub fn uuid16() -> String {
         rng.fill_bytes(&mut part_four);
         rng.fill_bytes(&mut part_five);
         return (
-            encode(part_one), //4
-            encode(part_two), //2
+            encode(part_one),   //4
+            encode(part_two),   //2
             encode(part_three), //2
-            encode(part_four), //2
-            encode(part_five), //6
+            encode(part_four),  //2
+            encode(part_five),  //6
         );
     });
 
